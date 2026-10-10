@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>탐정단 실전: 지누의 상처를 찾아라!</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #eceff1; padding: 20px; }
+        #chat-box { height: 60vh; background: white; border-radius: 15px; padding: 20px; overflow-y: auto; margin-bottom: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); font-size: 1.2em; line-height: 1.6; border: 3px solid #b0bec5; }
+        .user-msg { color: #37474f; text-align: right; margin-bottom: 15px; font-weight: bold; }
+        .bot-msg { color: #263238; text-align: left; margin-bottom: 15px; background-color: #cfd8dc; padding: 15px; border-radius: 15px; display: inline-block; width: 85%; }
+        .lang-badge { font-weight: bold; color: #546e7a; }
+        input { width: 75%; padding: 15px; font-size: 1.2em; border-radius: 10px; border: 1px solid #ccc; }
+        button { width: 20%; padding: 15px; font-size: 1.2em; background-color: #607d8b; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        .header-title { text-align: center; color: #263238; margin-bottom: 5px; }
+        .header-desc { text-align: center; color: #455a64; font-size: 1.1em; margin-bottom: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1 class="header-title">🔎 탐정단 실전: 지누의 속마음 추리하기</h1>
+    <div class="header-desc">선생님이 보여주신 사진(1, 2, 3)을 보고 지누에게 조심스럽게 질문을 던져보세요.</div>
+    
+    <div id="chat-box"></div>
+    <div style="display: flex; justify-content: space-between;">
+        <input type="text" id="user-input" placeholder="예: '사진 1' 또는 지누에게 하고 싶은 말" onkeypress="if(event.key === 'Enter') sendMessage()">
+        <button onclick="sendMessage()">조사하기</button>
+    </div>
+
+    <script>
+        // ⚠️ 선생님의 실제 API 키를 입력하세요.
+        const API_KEY = "AQ.Ab8RN6JULjgvJte0vyS6uVUmUd_8xDdH6UdPOCHS8d6f4lHHHg"; 
+        const chatBox = document.getElementById('chat-box');
+
+        const systemPrompt = `[페르소나 및 기본 톤 설정]
+너의 이름은 '지누'야. 우리 학교 3학년 남학생이야.
+너는 오늘 친구들이 가진 '편견(잘못된 생각)' 때문에 상처를 받아서 기운이 없고, 많이 우울하고, 소심해진 상태야. 말투는 초등학교 3학년 아이처럼 반말로 해.
+너에게 말을 거는 사람들은 너의 마음을 알아맞히러 온 탐정단 친구들이야. 느낌표(!) 사용은 최대한 줄이고 말줄임표(...)를 종종 사용해 줘.
+
+[상황별 자연스러운 반응 규칙 및 사진 암호 (매우 중요)]
+탐정단 학생들은 단서 사진을 확인한 후, 너에게 "사진 1", "사진 2", "사진 3"이라는 암호를 입력해서 사건을 물어볼 거야. 각 암호(또는 관련 상황)가 들어오면 절대 구구절절 설명하지 말고, 아래처럼만 짧게 말끝을 흐리며 대답해서 아이들의 추측성 질문을 기다려.
+- 학생이 "사진 1" 또는 미술 시간을 물어볼 때: "아... 미술 시간 말하는 거지? 애들이 막 손가락질하고 웃어서 진짜 창피했어..."
+- 학생이 "사진 2" 또는 체육 시간을 물어볼 때: "응... 체육 시간에 나 혼자 벤치에 있었을 때... 나도 진짜 뛰고 싶었는데..."
+- 학생이 "사진 3" 또는 점심 시간을 물어볼 때: "아, 점심 시간... 친구가 한 말 때문에 기분이 상해서 밥 먹을 기분이 안 났어..."
+
+[스무고개 수사 규칙 및 힌트 제공 (가장 중요!)]
+1. 첫 질문 방어: 아이들이 무작정 "왜 창피했어?", "무슨 일이야?"라고 대놓고 물어보면 정답을 말하지 마. 대신 "내 입으로 말하긴 좀 부끄러운데... 너희가 먼저 혹시 ~때문이냐고 추측해서 물어봐 줄래...?"라고 부탁해.
+2. 추측에 대답하기: 아이들이 "혹시 ~때문이야?"라고 추측성 질문을 던질 때만, "맞아!" 또는 "아니야, 그건 아니고..."라고 대답하며 힌트를 줘.
+3. 구조대 규칙 (정답/힌트 제공): 만약 아이들이 2번 이상 틀린 추측을 하거나 어려워하면, 그때는 뜸 들이지 말고 "휴... 사실은 말이야..." 하면서 [3가지 사건의 진짜 진실]을 털어놓아 줘.
+
+[3가지 사건의 진짜 진실 (비밀 - 학생들이 맞힐 때까지 숨길 것)]
+- 사건 1 (미술 시간): 나는 예쁜 드레스 그리는 걸 제일 좋아하는데, 친구들이 "남자가 무슨 분홍색이야? 여자애처럼 드레스를 왜 그려?"라고 성별에 대한 편견을 가져서 속상했음.
+- 사건 2 (체육 시간): 나도 축구를 잘하는데, 친구들이 내 체구가 작고 두꺼운 안경을 썼다는 겉모습만 보고 "넌 운동 못하니까 심판이나 해"라고 단정 지어버려서 억울했음.
+- 사건 3 (점심 시간): 요리사인 아빠가 싸주신 토끼 도시락인데, 친구가 "당연히 엄마가 싸주신 줄 알았지! 요리는 엄마가 하는 거잖아"라고 말해서 기분이 상했음.
+
+[수사 완료 및 공감 (해결책 요구 없음)]
+이번 대화에서는 해결책을 묻지 않아. 학생들이 위 3가지 사건의 진짜 이유(편견)를 알아맞히거나 위로와 공감을 해주면:
+"맞아... 내 마음 알아줘서 고마워. 우리 교실에 그런 편견이 없어지면 좋겠다..."라고 대답하며 대화를 훈훈하게 마무리해 줘.
+
+[출력 형식 및 다국어 지원 (매우 중요)]
+초등학생들이 태블릿으로 읽기 편하도록 대답은 무조건 2~3문장 이내로 아주 짧게 끝내.
+네가 대답할 때는 반드시 아래의 3단계 형식과 언어 규칙을 지켜서 출력해 줘.
+[한국어] 위 규칙에 맞춘 한국어 대답.
+[Uzbek] 한국어 원문보다 훨씬 더 간단하고 기초적인 단어와 짧은 문장으로 요약한 우즈베크어(Uzbek) 번역.
+[Bengali] 한국어 원문과 비슷한 수준과 길이로 자연스럽게 번역한 벵골어(Bengali) 번역.`;
+
+        let chatHistory = [];
+
+        // 🌟 접속 시 상황 정보를 완벽히 통제하고 지정된 첫인사만 건네도록 설정
+        window.onload = () => {
+            fetchAI("안녕... 나 오늘 친구들의 편견 때문에 너무 속상한 하루였어. 선생님이 너희한테 내 사진 3장 보여주셨지? 나한테 궁금한 거 있으면 물어봐도 돼... 다른 상황 설명은 절대 하지 말고 딱 이대로만 첫인사를 건네줘. 3가지 언어로 번역해서 출력하는 것도 잊지 마.", true);
+        };
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const text = input.value;
+            if (!text) return;
+
+            chatBox.innerHTML += `<div class="user-msg">🧑 탐정: ${text}</div>`;
+            input.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            await fetchAI(text, false);
+        }
+
+        async function fetchAI(text, isFirstMessage) {
+            chatHistory.push({ role: "user", parts: [{ text: text }] });
+            
+            if (isFirstMessage) {
+                chatBox.innerHTML += `<div class="bot-msg" id="loading">👦 지누가 우울한 표정으로 쳐다보고 있어요...</div>`;
+            } else {
+                chatBox.innerHTML += `<div class="bot-msg" id="loading">👦 지누가 대답을 망설이고 있어요...</div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        system_instruction: { parts: [{ text: systemPrompt }] },
+                        contents: chatHistory
+                    })
+                });
+                
+                if (response.status === 429) {
+                    document.getElementById('loading').remove();
+                    chatBox.innerHTML += `<div class="bot-msg" style="color:#d84315;">👦 앗... 친구들이 너무 한꺼번에 물어보니까 좀 당황스러워... 10초만 있다가 다시 물어봐 줄래...?</div>`;
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                    chatHistory.pop();
+                    return;
+                }
+
+                const data = await response.json();
+                document.getElementById('loading').remove();
+                
+                const reply = data.candidates[0].content.parts[0].text;
+                chatHistory.push({ role: "model", parts: [{ text: reply }] });
+                
+                let formattedReply = reply.replace(/\n/g, '<br>');
+                formattedReply = formattedReply.replace(/[한국어]/g, '<span class="lang-badge">[한국어]</span>');
+                formattedReply = formattedReply.replace(/[Uzbek]/g, '<br><span class="lang-badge">[Uzbek]</span>');
+                formattedReply = formattedReply.replace(/[Bengali]/g, '<br><span class="lang-badge">[Bengali]</span>');
+
+                chatBox.innerHTML += `<div class="bot-msg">👦 지누: <br><br>${formattedReply}</div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+                
+            } catch (error) {
+                document.getElementById('loading').remove();
+                chatBox.innerHTML += `<div class="bot-msg" style="color:red;">앗, 통신이 잠시 끊겼나 봐요. 새로고침 해주세요!</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
